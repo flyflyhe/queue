@@ -72,12 +72,18 @@ class Resque
             }
         }
 
-        if (!self::$redis->ping()) {
+        try {
+            if (!self::$redis->ping()) {
+                throw new \Exception('need retry');
+            }
+        } catch (\Throwable $e) {
             if (self::$redisRetry < 3) {
+                self::$redis = null;
                 sleep(self::$redisRetry);
                 return self::redis();
             }
         }
+
 
         return self::$redis;
     }
