@@ -1,5 +1,9 @@
 <?php
-class PHP_Job
+namespace he\queue\demo;
+
+use he\queue\tool\JobInterface;
+
+class PHPJob implements JobInterface
 {
 	public function perform()
 	{

@@ -1,12 +1,7 @@
 <?php
-/**
- * Wrap Credis to add namespace support and various helper methods.
- *
- * @package		Resque/Redis
- * @author		Chris Boulton <chris@bigcommerce.com>
- * @license		http://www.opensource.org/licenses/mit-license.php
- */
-class Resque_Redis
+namespace he\queue\tool;
+
+class Redis
 {
     public $driver = null;
 	/**
@@ -30,63 +25,11 @@ class Resque_Redis
 	 */
 	const DEFAULT_DATABASE = 0;
 
-	/**
-	 * @var array List of all commands in Redis that supply a key as their
-	 *	first argument. Used to prefix keys with the Resque namespace.
-	 */
-	private $keyCommands = array(
-		'exists',
-		'del',
-		'type',
-		'keys',
-		'expire',
-		'ttl',
-		'move',
-		'set',
-		'setex',
-		'get',
-		'getset',
-		'setnx',
-		'incr',
-		'incrby',
-		'decr',
-		'decrby',
-		'rpush',
-		'lpush',
-		'llen',
-		'lrange',
-		'ltrim',
-		'lindex',
-		'lset',
-		'lrem',
-		'lpop',
-		'blpop',
-		'rpop',
-		'sadd',
-		'srem',
-		'spop',
-		'scard',
-		'sismember',
-		'smembers',
-		'srandmember',
-		'zadd',
-		'zrem',
-		'zrange',
-		'zrevrange',
-		'zrangebyscore',
-		'zcard',
-		'zscore',
-		'zremrangebyscore',
-		'sort',
-		'rename',
-		'rpoplpush'
-	);
-
-	/**
-	 * Set Redis namespace (prefix) default: resque
-	 * @param string $namespace
-	 */
-	public static function prefix($namespace)
+    /**
+     * Set Redis namespace (prefix) default: resque
+     * @param string $namespace
+     */
+	public static function prefix(string $namespace)
 	{
 	    if (substr($namespace, -1) !== ':' && $namespace != '') {
 	        $namespace .= ':';
@@ -94,12 +37,13 @@ class Resque_Redis
 	    self::$defaultNamespace = $namespace;
 	}
 
-	/**
-	 * @param string|array $server A DSN or array
-	 * @param int $database A database number to select. However, if we find a valid database number in the DSN the
-	 *                      DSN-supplied value will be used instead and this parameter is ignored.
-	 * @param object $client Optional Credis_Cluster or Credis_Client instance instantiated by you
-	 */
+    /**
+     * @param string|array $server A DSN or array
+     * @param int $database A database number to select. However, if we find a valid database number in the DSN the
+     *                      DSN-supplied value will be used instead and this parameter is ignored.
+     * @param object $client Optional Credis_Cluster or Credis_Client instance instantiated by you
+     * @throws RedisException
+     */
     public function __construct($server, $database = null, $client = null)
 	{
 		try {
@@ -136,7 +80,7 @@ class Resque_Redis
 				$this->driver->select($database);
 			}
 		} catch(\RedisException $e) {
-			throw new Resque_RedisException('Error communicating with Redis: ' . $e->getMessage(), 0, $e);
+			throw new RedisException('Error communicating with Redis: ' . $e->getMessage(), 0, $e);
 		}
 	}
 
@@ -215,35 +159,33 @@ class Resque_Redis
 		);
 	}
 
-	/**
-	 * Magic method to handle all function requests and prefix key based
-	 * operations with the {self::$defaultNamespace} key prefix.
-	 *
-	 * @param string $name The name of the method called.
-	 * @param array $args Array of supplied arguments to the method.
-	 * @return mixed Return value from Resident::call() based on the command.
-	 */
-	public function __call($name, $args)
+    /**
+     * Magic method to handle all function requests and prefix key based
+     * operations with the {self::$defaultNamespace} key prefix.
+     *
+     * @param string $name The name of the method called.
+     * @param array $args Array of supplied arguments to the method.
+     * @return mixed Return value from Resident::call() based on the command.
+     * @throws RedisException
+     */
+	public function __call(string $name, array $args)
 	{
-		if (in_array($name, $this->keyCommands)) {
-			if (is_array($args[0])) {
-				foreach ($args[0] AS $i => $v) {
-					$args[0][$i] = self::$defaultNamespace . $v;
-				}
-			}
-			else {
-				$args[0] = self::$defaultNamespace . $args[0];
-			}
-		}
+        if (!empty($args) && is_array($args[0])) {
+            foreach ($args[0] AS $i => $v) {
+                $args[0][$i] = self::$defaultNamespace . $v;
+            }
+        } elseif (!empty($args)) {
+            $args[0] = self::$defaultNamespace . $args[0];
+        }
 		try {
-			return $this->driver->__call($name, $args);
+			return call_user_func([$this->driver, $name], ...$args);
 		} catch (\RedisException $e) {
-			throw new Resque_RedisException('Error communicating with Redis: ' . $e->getMessage(), 0, $e);
+			throw new RedisException('Error communicating with Redis: ' . $e->getMessage(), 0, $e);
 		}
 	}
 
-	public static function getPrefix()
-	{
+	public static function getPrefix(): string
+    {
 	    return self::$defaultNamespace;
 	}
 

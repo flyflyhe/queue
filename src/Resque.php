@@ -1,5 +1,13 @@
 <?php
 
+namespace he\queue;
+
+use he\queue\tool\Event;
+use he\queue\tool\Job;
+use he\queue\tool\job\DontCreate;
+use he\queue\tool\Redis;
+use RuntimeException;
+
 /**
  * Base Resque class.
  *
@@ -14,7 +22,7 @@ class Resque
     const DEFAULT_INTERVAL = 5;
 
     /**
-     * @var Resque_Redis|\Redis Instance of Resque_Redis that talks to redis.
+     * @var Redis|\Redis Instance of Resque_Redis that talks to redis.
      */
     public static $redis = null;
 
@@ -51,7 +59,8 @@ class Resque
     /**
      * Return an instance of the Resque_Redis class instantiated for Resque.
      *
-     * @return Resque_Redis|\Redis Instance of Resque_Redis.
+     * @return Redis|\Redis Instance of Resque_Redis.
+     * @throws tool\RedisException|\RedisException
      */
     public static function redis()
     {
@@ -59,7 +68,7 @@ class Resque
             if (is_callable(self::$redisServer)) {
                 self::$redis = call_user_func(self::$redisServer, self::$redisDatabase);
             } else {
-                self::$redis = new Resque_Redis(self::$redisServer, self::$redisDatabase);
+                self::$redis = new Redis(self::$redisServer, self::$redisDatabase);
             }
         }
 
@@ -133,7 +142,7 @@ class Resque
         $item = self::redis()->lpop('queue:' . $queue);
 
         if (!$item) {
-            return;
+            return null;
         }
 
         return json_decode($item, true);
@@ -186,7 +195,7 @@ class Resque
         $item = self::redis()->blpop($list, (int)$timeout);
 
         if (!$item) {
-            return;
+            return null;
         }
 
         /**
@@ -234,13 +243,13 @@ class Resque
             'id' => $id,
         );
         try {
-            Resque_Event::trigger('beforeEnqueue', $hookParams);
-        } catch (Resque_Job_DontCreate $e) {
+            Event::trigger('beforeEnqueue', $hookParams);
+        } catch (DontCreate $e) {
             return false;
         }
 
-        Resque_Job::create($queue, $class, $args, $trackStatus, $id);
-        Resque_Event::trigger('afterEnqueue', $hookParams);
+        Job::create($queue, $class, $args, $trackStatus, $id);
+        Event::trigger('afterEnqueue', $hookParams);
 
         return $id;
     }
@@ -249,11 +258,11 @@ class Resque
      * Reserve and return the next available job in the specified queue.
      *
      * @param string $queue Queue to fetch next available job from.
-     * @return Resque_Job Instance of Resque_Job to be processed, false if none or error.
+     * @return Job Instance of Resque_Job to be processed, false if none or error.
      */
-    public static function reserve($queue)
+    public static function reserve(string $queue): Job
     {
-        return Resque_Job::reserve($queue);
+        return Job::reserve($queue);
     }
 
     /**
@@ -329,8 +338,9 @@ class Resque
      *
      * @params string $string redis result in json
      * @params $items
-     *
-     * @return (bool)
+     * @param $string
+     * @param $items
+     * @return bool (bool)
      */
     private static function matchItem($string, $items)
     {
@@ -367,7 +377,7 @@ class Resque
      * @params string $queue the name of the queue
      * @return integer number of deleted items belongs to this list
      */
-    private static function removeList($queue)
+    private static function removeList($queue): int
     {
         $counter = self::size($queue);
         $result = self::redis()->del('queue:' . $queue);
@@ -379,7 +389,7 @@ class Resque
      *
      * @return string
      */
-    public static function generateJobId()
+    public static function generateJobId(): string
     {
         return md5(uniqid('', true));
     }

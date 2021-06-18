@@ -1,12 +1,14 @@
 <?php
-/**
- * Resque job.
- *
- * @package		Resque/Job
- * @author		Chris Boulton <chris@bigcommerce.com>
- * @license		http://www.opensource.org/licenses/mit-license.php
- */
-class Resque_Job
+namespace he\queue\tool;
+
+use he\queue\Resque;
+use he\queue\tool\job\DontPerform;
+use he\queue\tool\job\Factory;
+use he\queue\tool\job\FactoryInterface;
+use he\queue\tool\job\Status;
+use InvalidArgumentException;
+
+class Job
 {
 	/**
 	 * @var string The name of the queue that this job belongs to.
@@ -14,7 +16,7 @@ class Resque_Job
 	public $queue;
 
 	/**
-	 * @var Resque_Worker Instance of the Resque worker running this job.
+	 * @var Worker Instance of the Resque worker running this job.
 	 */
 	public $worker;
 
@@ -24,41 +26,41 @@ class Resque_Job
 	public $payload;
 
 	/**
-	 * @var object|Resque_JobInterface Instance of the class performing work for this job.
+	 * @var object|JobInterface Instance of the class performing work for this job.
 	 */
 	private $instance;
 
 	/**
-	 * @var Resque_Job_FactoryInterface
+	 * @var FactoryInterface
 	 */
 	private $jobFactory;
 
-	/**
-	 * Instantiate a new instance of a job.
-	 *
-	 * @param string $queue The queue that the job belongs to.
-	 * @param array $payload array containing details of the job.
-	 */
-	public function __construct($queue, $payload)
+    /**
+     * Instantiate a new instance of a job.
+     *
+     * @param string $queue The queue that the job belongs to.
+     * @param array $payload array containing details of the job.
+     */
+	public function __construct(string $queue, array $payload)
 	{
 		$this->queue = $queue;
 		$this->payload = $payload;
 	}
 
-	/**
-	 * Create a new job and save it to the specified queue.
-	 *
-	 * @param string $queue The name of the queue to place the job in.
-	 * @param string $class The name of the class that contains the code to execute the job.
-	 * @param array $args Any optional arguments that should be passed when the job is executed.
-	 * @param boolean $monitor Set to true to be able to monitor the status of a job.
-	 * @param string $id Unique identifier for tracking the job. Generated if not supplied.
-	 *
-	 * @return string
-	 * @throws \InvalidArgumentException
-	 */
-	public static function create($queue, $class, $args = null, $monitor = false, $id = null)
-	{
+    /**
+     * Create a new job and save it to the specified queue.
+     *
+     * @param string $queue The name of the queue to place the job in.
+     * @param string $class The name of the class that contains the code to execute the job.
+     * @param null $args Any optional arguments that should be passed when the job is executed.
+     * @param boolean $monitor Set to true to be able to monitor the status of a job.
+     * @param null $id Unique identifier for tracking the job. Generated if not supplied.
+     *
+     * @return string
+     * @throws \InvalidArgumentException
+     */
+	public static function create(string $queue, string $class, $args = null, $monitor = false, $id = null)
+    {
 		if (is_null($id)) {
 			$id = Resque::generateJobId();
 		}
@@ -76,7 +78,7 @@ class Resque_Job
 		));
 
 		if($monitor) {
-			Resque_Job_Status::create($id);
+			Status::create($id);
 		}
 
 		return $id;
@@ -89,14 +91,14 @@ class Resque_Job
 	 * @param string $queue The name of the queue to check for a job in.
 	 * @return false|object Null when there aren't any waiting jobs, instance of Resque_Job when a job was found.
 	 */
-	public static function reserve($queue)
+	public static function reserve(string $queue)
 	{
 		$payload = Resque::pop($queue);
 		if(!is_array($payload)) {
 			return false;
 		}
 
-		return new Resque_Job($queue, $payload);
+		return new Job($queue, $payload);
 	}
 
 	/**
@@ -115,7 +117,7 @@ class Resque_Job
 			return false;
 		}
 
-		return new Resque_Job($item['queue'], $item['payload']);
+		return new Job($item['queue'], $item['payload']);
 	}
 
 	/**
@@ -123,13 +125,13 @@ class Resque_Job
 	 *
 	 * @param int $status Status constant from Resque_Job_Status indicating the current status of a job.
 	 */
-	public function updateStatus($status)
+	public function updateStatus(int $status)
 	{
 		if(empty($this->payload['id'])) {
 			return;
 		}
 
-		$statusInstance = new Resque_Job_Status($this->payload['id']);
+		$statusInstance = new Status($this->payload['id']);
 		$statusInstance->update($status);
 	}
 
@@ -138,9 +140,9 @@ class Resque_Job
 	 *
 	 * @return int The status of the job as one of the Resque_Job_Status constants.
 	 */
-	public function getStatus()
-	{
-		$status = new Resque_Job_Status($this->payload['id']);
+	public function getStatus(): int
+    {
+		$status = new Status($this->payload['id']);
 		return $status->get();
 	}
 
@@ -149,8 +151,8 @@ class Resque_Job
 	 *
 	 * @return array Array of arguments.
 	 */
-	public function getArguments()
-	{
+	public function getArguments(): array
+    {
 		if (!isset($this->payload['args'])) {
 			return array();
 		}
@@ -160,11 +162,10 @@ class Resque_Job
 
 	/**
 	 * Get the instantiated object for this job that will be performing work.
-	 * @return Resque_JobInterface Instance of the object that this job belongs to.
-	 * @throws Resque_Exception
+	 * @return JobInterface Instance of the object that this job belongs to.
 	 */
-	public function getInstance()
-	{
+	public function getInstance(): JobInterface
+    {
 		if (!is_null($this->instance)) {
 			return $this->instance;
 		}
@@ -179,12 +180,11 @@ class Resque_Job
 	 * associated with the job with the supplied arguments.
 	 *
 	 * @return bool
-	 * @throws Resque_Exception When the job's class could not be found or it does not contain a perform method.
 	 */
-	public function perform()
-	{
+	public function perform(): bool
+    {
 		try {
-			Resque_Event::trigger('beforePerform', $this);
+			Event::trigger('beforePerform', $this);
 
 			$instance = $this->getInstance();
 			if(method_exists($instance, 'setUp')) {
@@ -197,10 +197,10 @@ class Resque_Job
 				$instance->tearDown();
 			}
 
-			Resque_Event::trigger('afterPerform', $this);
+			Event::trigger('afterPerform', $this);
 		}
 		// beforePerform/setUp have said don't perform this job. Return.
-		catch(Resque_Job_DontPerform $e) {
+		catch(DontPerform $e) {
 			return false;
 		}
 
@@ -214,29 +214,29 @@ class Resque_Job
 	 */
 	public function fail($exception)
 	{
-		Resque_Event::trigger('onFailure', array(
+		Event::trigger('onFailure', array(
 			'exception' => $exception,
 			'job' => $this,
 		));
 
-		$this->updateStatus(Resque_Job_Status::STATUS_FAILED);
-		Resque_Failure::create(
+		$this->updateStatus(Status::STATUS_FAILED);
+		Failure::create(
 			$this->payload,
 			$exception,
 			$this->worker,
 			$this->queue
 		);
-		Resque_Stat::incr('failed');
-		Resque_Stat::incr('failed:' . $this->worker);
+		Stat::incr('failed');
+		Stat::incr('failed:' . $this->worker);
 	}
 
 	/**
 	 * Re-queue the current job.
 	 * @return string
 	 */
-	public function recreate()
-	{
-		$status = new Resque_Job_Status($this->payload['id']);
+	public function recreate(): ?string
+    {
+		$status = new Status($this->payload['id']);
 		$monitor = false;
 		if($status->isTracking()) {
 			$monitor = true;
@@ -250,8 +250,11 @@ class Resque_Job
 	 *
 	 * @return string The string representation of the job.
 	 */
-	public function __toString()
-	{
+	public function __toString(): string
+    {
+        if (empty($this->payload)) {
+            return '';
+        }
 		$name = array(
 			'Job{' . $this->queue .'}'
 		);
@@ -265,24 +268,19 @@ class Resque_Job
 		return '(' . implode(' | ', $name) . ')';
 	}
 
-	/**
-	 * @param Resque_Job_FactoryInterface $jobFactory
-	 * @return Resque_Job
-	 */
-	public function setJobFactory(Resque_Job_FactoryInterface $jobFactory)
-	{
+
+	public function setJobFactory(FactoryInterface $jobFactory): Job
+    {
 		$this->jobFactory = $jobFactory;
 
 		return $this;
 	}
 
-    /**
-     * @return Resque_Job_FactoryInterface
-     */
+
     public function getJobFactory()
     {
         if ($this->jobFactory === null) {
-            $this->jobFactory = new Resque_Job_Factory();
+            $this->jobFactory = new Factory();
         }
         return $this->jobFactory;
     }

@@ -17,14 +17,14 @@
     }
   ],
   "require": {
-    "php": ">=5.6.0",
+    "php": ">=7.1.0",
     "ext-pcntl": "*",
     "ext-redis": "*",
+    "ext-json": "*",
     "psr/log": "~1.0"
   },
   "suggest": {
-    "ext-proctitle": "Allows php-resque to rename the title of UNIX processes to show the status of a worker.",
-    "ext-redis": "Native PHP extension for Redis connectivity. Credis will automatically utilize when available."
+    "ext-proctitle": "Allows php-resque to rename the title of UNIX processes to show the status of a worker."
   },
   "require-dev": {
     "phpunit/phpunit": "3.7.*"
@@ -33,8 +33,8 @@
     "bin/resque"
   ],
   "autoload": {
-    "psr-0": {
-      "Resque": "lib"
+    "psr-4": {
+      "he\\queue\\": "./src"
     }
   }
 }

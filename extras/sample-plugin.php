@@ -1,12 +1,14 @@
 <?php
 // Somewhere in our application, we need to register:
-Resque_Event::listen('afterEnqueue', array('My_Resque_Plugin', 'afterEnqueue'));
-Resque_Event::listen('beforeFirstFork', array('My_Resque_Plugin', 'beforeFirstFork'));
-Resque_Event::listen('beforeFork', array('My_Resque_Plugin', 'beforeFork'));
-Resque_Event::listen('afterFork', array('My_Resque_Plugin', 'afterFork'));
-Resque_Event::listen('beforePerform', array('My_Resque_Plugin', 'beforePerform'));
-Resque_Event::listen('afterPerform', array('My_Resque_Plugin', 'afterPerform'));
-Resque_Event::listen('onFailure', array('My_Resque_Plugin', 'onFailure'));
+use he\queue\tool\Event;
+
+Event::listen('afterEnqueue', array('My_Resque_Plugin', 'afterEnqueue'));
+Event::listen('beforeFirstFork', array('My_Resque_Plugin', 'beforeFirstFork'));
+Event::listen('beforeFork', array('My_Resque_Plugin', 'beforeFork'));
+Event::listen('afterFork', array('My_Resque_Plugin', 'afterFork'));
+Event::listen('beforePerform', array('My_Resque_Plugin', 'beforePerform'));
+Event::listen('afterPerform', array('My_Resque_Plugin', 'afterPerform'));
+Event::listen('onFailure', array('My_Resque_Plugin', 'onFailure'));
 
 class My_Resque_Plugin
 {

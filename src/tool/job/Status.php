@@ -1,12 +1,10 @@
 <?php
-/**
- * Status tracker/information for a job.
- *
- * @package		Resque/Job
- * @author		Chris Boulton <chris@bigcommerce.com>
- * @license		http://www.opensource.org/licenses/mit-license.php
- */
-class Resque_Job_Status
+
+namespace he\queue\tool\job;
+
+use he\queue\Resque;
+
+class Status
 {
 	const STATUS_WAITING = 1;
 	const STATUS_RUNNING = 2;
@@ -32,23 +30,23 @@ class Resque_Job_Status
 		self::STATUS_COMPLETE
 	);
 
-	/**
-	 * Setup a new instance of the job monitor class for the supplied job ID.
-	 *
-	 * @param string $id The ID of the job to manage the status for.
-	 */
-	public function __construct($id)
+    /**
+     * Setup a new instance of the job monitor class for the supplied job ID.
+     *
+     * @param string $id The ID of the job to manage the status for.
+     */
+	public function __construct(string $id)
 	{
 		$this->id = $id;
 	}
 
-	/**
-	 * Create a new status monitor item for the supplied job ID. Will create
-	 * all necessary keys in Redis to monitor the status of a job.
-	 *
-	 * @param string $id The ID of the job to monitor the status of.
-	 */
-	public static function create($id)
+    /**
+     * Create a new status monitor item for the supplied job ID. Will create
+     * all necessary keys in Redis to monitor the status of a job.
+     *
+     * @param string $id The ID of the job to monitor the status of.
+     */
+	public static function create(string $id)
 	{
 		$statusPacket = array(
 			'status' => self::STATUS_WAITING,
@@ -64,8 +62,8 @@ class Resque_Job_Status
 	 *
 	 * @return boolean True if the status is being monitored, false if not.
 	 */
-	public function isTracking()
-	{
+	public function isTracking(): bool
+    {
 		if($this->isTracking === false) {
 			return false;
 		}
@@ -135,8 +133,8 @@ class Resque_Job_Status
 	 *
 	 * @return string String representation of the current job status class.
 	 */
-	public function __toString()
-	{
+	public function __toString(): string
+    {
 		return 'job:' . $this->id . ':status';
 	}
 }
