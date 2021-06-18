@@ -17,7 +17,7 @@ use RuntimeException;
  */
 class Resque
 {
-    const VERSION = '1.2';
+    const VERSION = '1.0';
 
     const DEFAULT_INTERVAL = 5;
 

@@ -24,7 +24,7 @@ If you're not familiar with Composer, please see <http://getcomposer.org/>.
 ```json
 {
     "require": {
-        "he/queue": "1.2.x"
+        "he/queue": "1.0"
     }
 }
 ```
