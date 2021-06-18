@@ -8,6 +8,7 @@
  */
 class Resque_Redis
 {
+    public $driver = null;
 	/**
 	 * Redis namespace
 	 * @var string
@@ -80,17 +81,6 @@ class Resque_Redis
 		'rename',
 		'rpoplpush'
 	);
-	// sinterstore
-	// sunion
-	// sunionstore
-	// sdiff
-	// sdiffstore
-	// sinter
-	// smove
-	// mget
-	// msetnx
-	// mset
-	// renamenx
 
 	/**
 	 * Set Redis namespace (prefix) default: resque
@@ -114,22 +104,23 @@ class Resque_Redis
 	{
 		try {
 			if (is_array($server)) {
-				$this->driver = new Credis_Cluster($server);
-			}
-			else if (is_object($client)) {
+				$this->driver = new \Redis();
+				$this->driver->pconnect($server['host'], $server['port'], $server['timeout'], $server['persistent']);
+				if ($server['password']) {
+				    $this->driver->auth($server['password']);
+                }
+			} else if (is_object($client)) {
 				$this->driver = $client;
-			}
-			else {
+			} else {
 				list($host, $port, $dsnDatabase, $user, $password, $options) = self::parseDsn($server);
 				// $user is not used, only $password
 
 				// Look for known Credis_Client options
 				$timeout = isset($options['timeout']) ? intval($options['timeout']) : null;
 				$persistent = isset($options['persistent']) ? $options['persistent'] : '';
-				$maxRetries = isset($options['max_connect_retries']) ? $options['max_connect_retries'] : 0;
 
-				$this->driver = new Credis_Client($host, $port, $timeout, $persistent);
-				$this->driver->setMaxConnectRetries($maxRetries);
+				$this->driver = new \Redis();
+				$this->driver->pconnect($host, $port, $timeout, $persistent);
 				if ($password){
 					$this->driver->auth($password);
 				}
@@ -144,8 +135,7 @@ class Resque_Redis
 			if ($database !== null) {
 				$this->driver->select($database);
 			}
-		}
-		catch(CredisException $e) {
+		} catch(\RedisException $e) {
 			throw new Resque_RedisException('Error communicating with Redis: ' . $e->getMessage(), 0, $e);
 		}
 	}
@@ -247,8 +237,7 @@ class Resque_Redis
 		}
 		try {
 			return $this->driver->__call($name, $args);
-		}
-		catch (CredisException $e) {
+		} catch (\RedisException $e) {
 			throw new Resque_RedisException('Error communicating with Redis: ' . $e->getMessage(), 0, $e);
 		}
 	}

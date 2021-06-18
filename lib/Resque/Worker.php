@@ -147,85 +147,85 @@ class Resque_Worker
 		$this->updateProcLine('Starting');
 		$this->startup();
 
-		while(true) {
-			if($this->shutdown) {
-				break;
-			}
+        $child = Resque::fork();
 
-			// Attempt to find and reserve a job
-			$job = false;
-			if(!$this->paused) {
-				if($blocking === true) {
-					$this->logger->log(Psr\Log\LogLevel::INFO, 'Starting blocking with timeout of {interval}', array('interval' => $interval));
-					$this->updateProcLine('Waiting for ' . implode(',', $this->queues) . ' with blocking timeout ' . $interval);
-				} else {
-					$this->updateProcLine('Waiting for ' . implode(',', $this->queues) . ' with interval ' . $interval);
-				}
+        // Forked and we're the child. Run the job.
+        if ($child === 0 || $child === false) {
+            $status = 'Processing '.implode(',', $this->queues).' since ' . strftime('%F %T');
+            $this->updateProcLine($status);
+            $this->logger->log(Psr\Log\LogLevel::INFO, $status);
+            if ($this->child === 0) {
+                exit(0);
+            }
 
-				$job = $this->reserve($blocking, $interval);
-			}
+            while(true) {
+                if($this->shutdown) {
+                    break;
+                }
 
-			if(!$job) {
-				// For an interval of 0, break now - helps with unit testing etc
-				if($interval == 0) {
-					break;
-				}
+                // Attempt to find and reserve a job
+                $job = false;
+                if(!$this->paused) {
+                    if($blocking === true) {
+                        $this->logger->log(Psr\Log\LogLevel::INFO, 'Starting blocking with timeout of {interval}', array('interval' => $interval));
+                        $this->updateProcLine('Waiting for ' . implode(',', $this->queues) . ' with blocking timeout ' . $interval);
+                    } else {
+                        $this->updateProcLine('Waiting for ' . implode(',', $this->queues) . ' with interval ' . $interval);
+                    }
 
-				if($blocking === false)
-				{
-					// If no job was found, we sleep for $interval before continuing and checking again
-					$this->logger->log(Psr\Log\LogLevel::INFO, 'Sleeping for {interval}', array('interval' => $interval));
-					if($this->paused) {
-						$this->updateProcLine('Paused');
-					}
-					else {
-						$this->updateProcLine('Waiting for ' . implode(',', $this->queues));
-					}
+                    $job = $this->reserve($blocking, $interval);
+                }
 
-					usleep($interval * 1000000);
-				}
+                if(!$job) {
+                    // For an interval of 0, break now - helps with unit testing etc
+                    if($interval == 0) {
+                        break;
+                    }
 
-				continue;
-			}
+                    if($blocking === false)
+                    {
+                        // If no job was found, we sleep for $interval before continuing and checking again
+                        $this->logger->log(Psr\Log\LogLevel::INFO, 'Sleeping for {interval}', array('interval' => $interval));
+                        if($this->paused) {
+                            $this->updateProcLine('Paused');
+                        }
+                        else {
+                            $this->updateProcLine('Waiting for ' . implode(',', $this->queues));
+                        }
 
-			$this->logger->log(Psr\Log\LogLevel::NOTICE, 'Starting work on {job}', array('job' => $job));
-			Resque_Event::trigger('beforeFork', $job);
-			$this->workingOn($job);
+                        usleep($interval * 1000000);
+                    }
 
-			$this->child = Resque::fork();
+                    continue;
+                }
 
-			// Forked and we're the child. Run the job.
-			if ($this->child === 0 || $this->child === false) {
-				$status = 'Processing ' . $job->queue . ' since ' . strftime('%F %T');
-				$this->updateProcLine($status);
-				$this->logger->log(Psr\Log\LogLevel::INFO, $status);
-				$this->perform($job);
-				if ($this->child === 0) {
-					exit(0);
-				}
-			}
+                $this->logger->log(Psr\Log\LogLevel::NOTICE, 'Starting work on {job}', array('job' => $job));
+                Resque_Event::trigger('beforeFork', $job);
+                $this->workingOn($job);
+                $this->perform($job);
+                $this->doneWorking();
+            }
 
-			if($this->child > 0) {
-				// Parent process, sit and wait
-				$status = 'Forked ' . $this->child . ' at ' . strftime('%F %T');
-				$this->updateProcLine($status);
-				$this->logger->log(Psr\Log\LogLevel::INFO, $status);
+            exit(0);
 
-				// Wait until the child process finishes before continuing
-				pcntl_wait($status);
-				$exitStatus = pcntl_wexitstatus($status);
-				if($exitStatus !== 0) {
-					$job->fail(new Resque_Job_DirtyExitException(
-						'Job exited with exit code ' . $exitStatus
-					));
-				}
-			}
+        } elseif($child > 0) {
+            $this->child = $child;
+            // Parent process, sit and wait
+            $status = 'Forked ' . $this->child . ' at ' . strftime('%F %T');
+            $this->updateProcLine($status);
+            $this->logger->log(Psr\Log\LogLevel::INFO, $status);
 
-			$this->child = null;
-			$this->doneWorking();
-		}
-
-		$this->unregisterWorker();
+            // Wait until the child process finishes before continuing
+            pcntl_wait($status);
+            $exitStatus = pcntl_wexitstatus($status);
+            //正常退出则退出 否则重新拉起子进程
+            if($exitStatus === 0) {
+                $this->child = null;
+                $this->unregisterWorker();
+            } else {
+                $this->work($interval, $blocking);
+            }
+        }
 	}
 
 	/**
@@ -381,6 +381,9 @@ class Resque_Worker
 	public function shutdown()
 	{
 		$this->shutdown = true;
+		if ($this->child) {
+            posix_kill($this->child, SIGQUIT);//需要通知子进程
+        }
 		$this->logger->log(Psr\Log\LogLevel::NOTICE, 'Shutting down');
 	}
 
