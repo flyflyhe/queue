@@ -1,44 +1,14 @@
-php-resque: PHP Resque Worker (and Enqueue) [![Build Status](https://secure.travis-ci.org/chrisboulton/php-resque.png)](http://travis-ci.org/chrisboulton/php-resque)
-===========================================
-
-Resque is a Redis-backed library for creating background jobs, placing
-those jobs on one or more queues, and processing them later.
-
-## Background ##
-
-Resque was pioneered and is developed by the fine folks at GitHub (yes,
-I am a kiss-ass), and written in Ruby. What you're seeing here is an
-almost direct port of the Resque worker and enqueue system to PHP.
-
-For more information on Resque, visit the official GitHub project:
- <https://github.com/resque/resque>
-
-For further information, see the launch post on the GitHub blog:
- <http://github.com/blog/542-introducing-resque>
-
-The PHP port does NOT include its own web interface for viewing queue
-stats, as the data is stored in the exact same expected format as the
-Ruby version of Resque.
-
-The PHP port provides much the same features as the Ruby version:
-
-* Workers can be distributed between multiple machines
-* Includes support for priorities (queues)
-* Resilient to memory leaks (forking)
-* Expects failure
-
-It also supports the following additional features:
-
-* Has the ability to track the status of jobs
-* Will mark a job as failed, if a forked child running a job does
-not exit with a status code as 0
-* Has built in support for `setUp` and `tearDown` methods, called
-pre and post jobs
+##forked by https://github.com/chrisboulton/php-resque##
+```
+###增加namespace
+###更改执行方式 原始方式每个任务fork一个子进程 执行完退出
+###更改后 子进程常驻执行任务 父进程检测到子进程退出 重新拉起子进程
+```
 
 ## Requirements ##
 
-* PHP 5.3+
-* Redis 2.2+
+* PHP 7.1+
+* Redis 4.0+
 * Optional but Recommended: Composer
 
 ## Getting Started ##
@@ -54,7 +24,7 @@ If you're not familiar with Composer, please see <http://getcomposer.org/>.
 ```json
 {
     "require": {
-        "chrisboulton/php-resque": "1.2.x"
+        "he/queue": "1.2.x"
     }
 }
 ```
@@ -437,54 +407,3 @@ Called after a job has been queued using the `Resque::enqueue` method. Arguments
 
 For a more in-depth look at what php-resque does under the hood (without 
 needing to directly examine the code), have a look at `HOWITWORKS.md`.
-
-## Contributors ##
-
-### Project Lead ###
-
-* @chrisboulton
-
-### Others ###
-
-* @acinader
-* @ajbonner
-* @andrewjshults
-* @atorres757
-* @benjisg
-* @cballou
-* @chaitanyakuber
-* @charly22
-* @CyrilMazur
-* @d11wtq
-* @danhunsaker
-* @dceballos
-* @ebernhardson
-* @hlegius
-* @hobodave
-* @humancopy
-* @iskandar
-* @JesseObrien
-* @jjfrey
-* @jmathai
-* @joshhawthorne
-* @KevBurnsJr
-* @lboynton
-* @maetl
-* @matteosister
-* @MattHeath
-* @mickhrmweb
-* @Olden
-* @patrickbajao
-* @pedroarnal
-* @ptrofimov
-* @rajibahmed
-* @richardkmiller
-* @Rockstar04
-* @ruudk
-* @salimane
-* @scragg0x
-* @scraton
-* @thedotedge
-* @tonypiper
-* @trimbletodd
-* @warezthebeef
