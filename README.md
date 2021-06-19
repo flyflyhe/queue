@@ -1,4 +1,4 @@
-##forked by https://github.com/chrisboulton/php-resque##
+## 参考 https://github.com/chrisboulton/php-resque ##
 ```
 ###增加namespace
 ###使用pcntl_async_signals替换declare 提高性能 不支持php7.1以下
