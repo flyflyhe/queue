@@ -39,6 +39,12 @@ If you're not familiar with Composer, please see <http://getcomposer.org/>.
 require 'vendor/autoload.php';
 ```
 
+## example ##
+```
+QUEUE=* REDIS_BACKEND=redis://user:password@localhost:6379/0?pass=password bin/resque
+REDIS_BACKEND=redis://user:password@localhost:6379/0?pass=password bin/push.php
+```
+
 ## Jobs ##
 
 ### Queueing Jobs ###
