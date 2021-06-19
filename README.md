@@ -42,7 +42,7 @@ require 'vendor/autoload.php';
 ## example ##
 ```
 QUEUE=* REDIS_BACKEND=redis://user:password@localhost:6379/0?pass=password bin/resque
-REDIS_BACKEND=redis://user:password@localhost:6379/0?pass=password bin/push.php
+REDIS_BACKEND=redis://user:password@localhost:6379/0?pass=password bin/push
 ```
 
 ## Jobs ##
