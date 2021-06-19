@@ -1,7 +1,7 @@
 ##forked by https://github.com/chrisboulton/php-resque##
 ```
 ###增加namespace
-###使用pcntl_async_signals替换declare 提高性能 不在支持php7.1以下
+###使用pcntl_async_signals替换declare 提高性能 不支持php7.1以下
 ###更改执行方式 原始方式每个任务fork一个子进程 执行完退出
 ###更改后 子进程常驻执行任务 父进程检测到子进程异常退出 重新拉起子进程
 ```
