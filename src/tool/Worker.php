@@ -1,5 +1,5 @@
 <?php
-declare(ticks = 1);
+//declare(ticks = 1);
 
 namespace he\queue\tool;
 
@@ -8,6 +8,8 @@ use he\queue\tool\job\DirtyExitException;
 use he\queue\tool\job\Status;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
+
+pcntl_async_signals(true);
 
 class Worker
 {
